@@ -19,7 +19,7 @@ from streaming.vadaudio import VADAudio
 from config import config
 
 ds_small = DeepSpeech(config, 'small_lm')
-ds_large = DeepSpeech(config, 'large_lm')
+#ds_large = DeepSpeech(config, 'large_lm')
 
 class Stream(WebSocketServerProtocol):
 
@@ -31,7 +31,7 @@ class Stream(WebSocketServerProtocol):
                             input_rate=16000)
         self.run_stream = thread_with_trace(
             target=stream,
-            args=(ds_small, ds_large, self.vad_audio, self, ))
+            args=(ds_small, self.vad_audio, self, ))
         self.run_stream.start()
 
     def onClose(self, wasClean, code, reason):

@@ -27,21 +27,44 @@ def stt(ds, wav_data):
     return stt
 
 
-def stream(ds, vad_audio, ws):
+def stream(ds_small, ds_large, vad_audio, ws):
     frames = vad_audio.vad_collector()
+    sctxt = ds_large.setupStream()
+
+    prev_output = ''
+    output = ''
+    counter = 0
     wav_data = bytearray()
 
     for frame in frames:
         if frame is not None:
+            ds_large.feedAudioContent(
+                sctxt, np.frombuffer(frame, np.int16))
             wav_data.extend(frame)
+            if counter == 8:
+                output = ds_large.intermediateDecode(sctxt)
+                prev_output = handle_output(prev_output, output, ws)
+                counter = 0
+            else:
+                counter += 1
         else:
-            transcript_stt = stt(ds, wav_data)
-            print('aime-lm: ', transcript_stt)
+            transcript = ds_large.finishStream(sctxt)
+            print('transcript: ', transcript)
             obj = {
-                'type': 'aime',
+                'type': 'final',
+                'transcript': transcript,
+            }
+            payload = json.dumps(obj, ensure_ascii=False).encode('utf8')
+            ws.sendMessage(payload)
+
+            transcript_stt = stt(ds_small, wav_data)
+            print('stt small: ', transcript_stt)
+            obj = {
+                'type': 'small',
                 'transcript': transcript_stt,
             }
             payload = json.dumps(obj, ensure_ascii=False).encode('utf8')
             ws.sendMessage(payload)
 
             wav_data = bytearray()
+            sctxt = ds_large.setupStream()
