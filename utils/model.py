@@ -2,23 +2,44 @@ import os
 from deepspeech import Model
 
 
-def create_model(path, config):
-    # Extract config
-    model = path.get('model') + 'output_graph.pbmm'
-    lm_path = path.get('lm_path')
-    beam_width = config.get('beam_width')
-    lm_weight = config.get('lm_weight')
-    w_weight = config.get('w_weight')
-    n_features = 26
-    n_context = 9
+class DeepSpeech(Model):
+    
+    def __init__(self, config, lm):
 
-    # Búa til lm paths
-    alphabet = os.path.join(lm_path, 'alphabet.txt')
-    lm = os.path.join(lm_path, 'lm.binary')
-    trie = os.path.join(lm_path, 'trie')
+        # Config
+        self.config = config
+        self.path = self.config.get('path')
+        self.modelcfg = self.config.get('model')
+        self.model = os.path.join(self.path,'output_graph.pbmm')
+        self.alphabet = os.path.join(self.path, 'alphabet.txt')
+        self.beam_width = self.modelcfg.get('beam_width')
+        self.n_features = self.modelcfg.get('n_features')
+        self.n_context = self.modelcfg.get('n_context')
+        self.lmcfg = self.config.get('lm')
 
-    # Búa til módel
-    ds = Model(model, n_features, n_context, alphabet, beam_width)
-    ds.enableDecoderWithLM(alphabet, lm, trie, lm_weight, w_weight)
+        # Initialize DS model
+        super().__init__(
+            self.model, 
+            self.n_features, 
+            self.n_context, 
+            self.alphabet, 
+            self.beam_width)
+        
+        self.enable_lm(lm)
 
-    return ds
+
+    def enable_lm(self, lm):
+        self.lm = self.lmcfg.get(lm)
+        self.lm_path = os.path.join(self.path, self.lm.get('path'))
+        self.lmbin = os.path.join(self.lm_path, 'lm.binary')
+        self.trie = os.path.join(self.lm_path, 'trie')
+        self.lm_weight = self.lm.get('lm_weight')
+        self.w_weight = self.lm.get('w_weight')
+
+        self.enableDecoderWithLM(
+            self.alphabet,
+            self.lmbin,
+            self.trie,
+            self.lm_weight,
+            self.w_weight
+        )
