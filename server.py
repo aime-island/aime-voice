@@ -13,13 +13,18 @@ from twisted.web.static import Data
 from utils.thread_with_trace import thread_with_trace
 from streaming.stream import Stream
 
+from config import config
+from utils.model import DeepSpeech
+
+ds_aime = DeepSpeech(config, 'small_lm')
+ds_large = DeepSpeech(config, 'large_lm')
 
 class Anna(WebSocketServerProtocol):
 
-
     def onConnect(self, request):
         print("Client connecting: {0}".format(request.peer))
-        self.stream = Stream()
+        self.stream = Stream(ds_aime=ds_aime, ds_large=ds_large)
+        
         self.run_stream = thread_with_trace(
             target=self.stream.run,
             args=(self, ))
@@ -28,15 +33,9 @@ class Anna(WebSocketServerProtocol):
 
     def onClose(self, wasClean, code, reason):
         print("WebSocket connection closed: {0}".format(reason))
-        self.stream.destroy_self()
         self.stream = None
         self.run_stream.kill()
         self.run_stream.join()
-
-
-    def onMessage(self, payload, isBinary):
-        print("toggled")
-        self.stream.toggle_lm()
 
 
 if __name__ == '__main__':
